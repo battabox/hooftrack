@@ -57,6 +57,7 @@ Both `dev` and `preview` print a **Network** address that ends in `/hooftrack/`,
   - **🎤 Speak numbers:** say "1234 and 5678" (or "1234 en 5678"). This uses the phone's own speech recognition, so it needs internet, and the audio is processed by Google (Android) or Apple (iPhone).
   - **📷 Photo of ear tag:** the number is read on the phone itself, and the numbers it finds appear as buttons to tap. The first use downloads the text reader (about 3 MB), so it needs internet once.
   - Numbers from voice or photo are never added on their own: they go into the text box so they can be checked first.
+- **Cows search:** type the number, or use **🎤 Say the number** / **📷 Photo of ear tag** to look up the cow.
 - **Trim record:** foot, claw, problem, severity, treatment and recheck in a few taps, with undo.
 - **Cow history:** every visit, plus a flag when the same problem was recorded twice on the same foot.
 - **Delete:** a visit, a cow or a farm, each with a confirmation and Undo.
