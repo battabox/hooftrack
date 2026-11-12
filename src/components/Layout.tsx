@@ -4,6 +4,7 @@ import { go } from '../lib/router';
 
 const NAV = [
   { path: '/', key: '', label: 'Due', icon: '📅' },
+  { path: '/list', key: 'list', label: 'To trim', icon: '📋' },
   { path: '/cows', key: 'cows', label: 'Cows', icon: '🐄' },
   { path: '/farms', key: 'farms', label: 'Farms', icon: '🏠' },
   { path: '/settings', key: 'settings', label: 'Settings', icon: '⚙️' },
@@ -27,7 +28,7 @@ export function Layout(props: { children: ReactNode; active: string; hideNav?: b
 
       {!props.hideNav && (
         <nav className="fixed inset-x-0 bottom-0 z-20 border-t-2 border-neutral-300 bg-white pb-[env(safe-area-inset-bottom)] dark:border-neutral-700 dark:bg-neutral-950">
-          <div className="mx-auto grid max-w-xl grid-cols-4">
+          <div className="mx-auto grid max-w-xl grid-cols-5">
             {NAV.map((n) => {
               const on = n.key === props.active;
               return (

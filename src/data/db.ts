@@ -1,5 +1,5 @@
 import Dexie, { type Table } from 'dexie';
-import type { Cow, Farm, OptionItem, Visit } from './types';
+import type { Cow, Farm, OptionItem, TrimListItem, Visit } from './types';
 import { DEFAULT_FARM_NAME, OLD_DEFAULT_FARM_NAME } from './defaults';
 
 export const SCHEMA_V1 = {
@@ -15,6 +15,7 @@ export class HoofDB extends Dexie {
   cows!: Table<Cow, string>;
   visits!: Table<Visit, string>;
   options!: Table<OptionItem, string>;
+  trimList!: Table<TrimListItem, string>;
 
   constructor(name = 'hooftrack') {
     super(name);
@@ -29,5 +30,7 @@ export class HoofDB extends Dexie {
         const old = all.find((f) => f.name === OLD_DEFAULT_FARM_NAME);
         if (old) await farms.update(old.id, { name: DEFAULT_FARM_NAME });
       });
+    // v3: "To trim" list per farm.
+    this.version(3).stores({ ...SCHEMA_V1, trimList: 'id, farmId, cowId, [farmId+cowId]' });
   }
 }

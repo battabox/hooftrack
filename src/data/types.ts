@@ -78,6 +78,19 @@ export interface OptionItem {
   isRoutine?: boolean;
 }
 
+export type TrimStatus = 'todo' | 'done' | 'notDone';
+
+/** A cow the farm wants trimmed; the trimmer ticks it off. */
+export interface TrimListItem {
+  id: string;
+  farmId: string;
+  cowId: string;
+  addedOn: string;
+  status: TrimStatus;
+  resolvedOn: string | null;
+  createdAt: string;
+}
+
 export interface BackupFile {
   app: 'HoofTrack';
   version: 1;
@@ -86,4 +99,6 @@ export interface BackupFile {
   cows: Cow[];
   visits: Visit[];
   options: OptionItem[];
+  /** Added later; older backups don't have it. */
+  trimList?: TrimListItem[];
 }

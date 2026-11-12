@@ -10,6 +10,7 @@ import { TrimRecord } from './screens/TrimRecord';
 import { CowHistory } from './screens/CowHistory';
 import { Farms } from './screens/Farms';
 import { Settings } from './screens/Settings';
+import { ToTrim } from './screens/ToTrim';
 
 const FARM_KEY = 'hooftrack.currentFarm';
 const readFarmId = () => { try { return localStorage.getItem(FARM_KEY); } catch { return null; } };
@@ -45,6 +46,7 @@ export default function App() {
   let hideNav = false;
   switch (page) {
     case 'cows': screen = <FindCow />; break;
+    case 'list': screen = <ToTrim />; break;
     case 'cow': screen = <CowHistory cowId={id} />; active = 'cows'; break;
     case 'trim': screen = <TrimRecord key={id} cowId={id} />; active = 'cows'; hideNav = true; break;
     case 'farms': screen = <Farms />; break;

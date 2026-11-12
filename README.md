@@ -65,4 +65,4 @@ Both `dev` and `preview` print a **Network** address that ends in `/hooftrack/`,
 - Notifications and reminders for due rechecks
 - Photos of feet or claws
 - Multiple trimmers sharing a farm, roles or permissions
-- Reports and printing, editing or deleting past visits (only undo of the last save)
+- Reports and printing, editing past visits (a wrong visit can be deleted and recorded again)

@@ -6,7 +6,7 @@ import { HoofDB } from './db';
 import { DEFAULT_FARM_NAME, defaultOptions } from './defaults';
 import { buildDemoData } from './demo';
 import { nextCheckDate, todayISO, type Recheck } from '../lib/dates';
-import type { BackupFile, Cow, Farm, FootRecord, OptionItem, OptionKind, Visit } from './types';
+import type { BackupFile, Cow, Farm, FootRecord, OptionItem, OptionKind, TrimListItem, TrimStatus, Visit } from './types';
 
 export class DuplicateCowError extends Error {
   constructor(public existing: Cow) {
@@ -42,9 +42,40 @@ export interface NewVisitInput {
   isDemo?: boolean;
 }
 
+/** Everything removed by a delete, so it can be put back with restore() (undo). */
+export interface DeletedSnapshot {
+  farms: Farm[];
+  cows: Cow[];
+  visits: Visit[];
+  trimList: TrimListItem[];
+}
+
 export interface DueItem {
   visit: Visit;
   cow: Cow;
+}
+
+export interface TrimListEntry {
+  item: TrimListItem;
+  cow: Cow;
+}
+
+export interface AddToListResult {
+  added: string[];
+  alreadyOnList: string[];
+  newCows: string[];
+}
+
+/** Split pasted text into cow numbers: one per line (commas/semicolons also work). Spaces stay, ear tags contain them. */
+export function parseCowNumbers(text: string): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const part of text.split(/[\n\r,;]+/)) {
+    const n = displayCowNumber(part);
+    const key = cowNumberKey(n);
+    if (key && !seen.has(key)) { seen.add(key); out.push(n); }
+  }
+  return out;
 }
 
 export function createRepo(db: HoofDB) {
@@ -127,9 +158,99 @@ export function createRepo(db: HoofDB) {
       await db.visits.add(visit);
       return visit;
     },
-    async deleteVisit(farmId: string, visitId: string): Promise<void> {
+    async deleteVisit(farmId: string, visitId: string): Promise<DeletedSnapshot> {
       const v = await db.visits.get(visitId);
-      if (v && v.farmId === farmId) await db.visits.delete(visitId);
+      if (!v || v.farmId !== farmId) throw new Error('Visit not found on this farm');
+      await db.visits.delete(visitId);
+      return { farms: [], cows: [], visits: [v], trimList: [] };
+    },
+    /** Deletes a cow, all of its visits and its "to trim" entries. */
+    async deleteCow(farmId: string, cowId: string): Promise<DeletedSnapshot> {
+      return db.transaction('rw', db.cows, db.visits, db.trimList, async () => {
+        const cow = await db.cows.get(cowId);
+        if (!cow || cow.farmId !== farmId) throw new Error('Cow not found on this farm');
+        const visits = await db.visits.where('[farmId+cowId]').equals([farmId, cowId]).toArray();
+        const trimList = await db.trimList.where('[farmId+cowId]').equals([farmId, cowId]).toArray();
+        await db.visits.bulkDelete(visits.map((v) => v.id));
+        await db.trimList.bulkDelete(trimList.map((t) => t.id));
+        await db.cows.delete(cowId);
+        return { farms: [], cows: [cow], visits, trimList };
+      });
+    },
+    /** Deletes a farm with all its cows and visits. The last remaining farm cannot be deleted. */
+    async deleteFarm(farmId: string): Promise<DeletedSnapshot> {
+      return db.transaction('rw', [db.farms, db.cows, db.visits, db.trimList], async () => {
+        const farm = await db.farms.get(farmId);
+        if (!farm) throw new Error('Farm not found');
+        if ((await db.farms.count()) <= 1) throw new Error('You need at least one farm. Add another farm first.');
+        const cows = await db.cows.where('farmId').equals(farmId).toArray();
+        const visits = await db.visits.where('farmId').equals(farmId).toArray();
+        const trimList = await db.trimList.where('farmId').equals(farmId).toArray();
+        await db.visits.bulkDelete(visits.map((v) => v.id));
+        await db.trimList.bulkDelete(trimList.map((t) => t.id));
+        await db.cows.bulkDelete(cows.map((c) => c.id));
+        await db.farms.delete(farmId);
+        return { farms: [farm], cows, visits, trimList };
+      });
+    },
+    /** Undo a delete. */
+    async restore(s: DeletedSnapshot): Promise<void> {
+      await db.transaction('rw', [db.farms, db.cows, db.visits, db.trimList], async () => {
+        await db.farms.bulkPut(s.farms);
+        await db.cows.bulkPut(s.cows);
+        await db.visits.bulkPut(s.visits);
+        await db.trimList.bulkPut(s.trimList);
+      });
+    },
+
+    // ---- "To trim" list (farm adds cows, trimmer ticks them off)
+    async listTrimList(farmId: string): Promise<TrimListEntry[]> {
+      const [items, cows] = await Promise.all([
+        db.trimList.where('farmId').equals(farmId).toArray(),
+        db.cows.where('farmId').equals(farmId).toArray(),
+      ]);
+      const byId = new Map(cows.map((c) => [c.id, c]));
+      return items
+        .filter((item) => byId.has(item.cowId))
+        .map((item) => ({ item, cow: byId.get(item.cowId)! }))
+        .sort((a, b) => a.item.createdAt.localeCompare(b.item.createdAt) || a.cow.number.localeCompare(b.cow.number, undefined, { numeric: true }));
+    },
+    /** Adds cows by number. Unknown numbers become new cows. A cow already open on the list is not added twice. */
+    async addToTrimList(farmId: string, text: string): Promise<AddToListResult> {
+      if (!(await db.farms.get(farmId))) throw new Error('Farm not found');
+      const result: AddToListResult = { added: [], alreadyOnList: [], newCows: [] };
+      const today = todayISO();
+      for (const number of parseCowNumbers(text)) {
+        let cow = await repo.findCowByNumber(farmId, number);
+        if (!cow) { cow = await repo.addCow(farmId, number); result.newCows.push(cow.number); }
+        const open = await db.trimList.where('[farmId+cowId]').equals([farmId, cow.id]).filter((t) => t.status === 'todo').first();
+        if (open) { result.alreadyOnList.push(cow.number); continue; }
+        await db.trimList.add({ id: newId(), farmId, cowId: cow.id, addedOn: today, status: 'todo', resolvedOn: null, createdAt: nowStamp() });
+        result.added.push(cow.number);
+      }
+      return result;
+    },
+    async setTrimStatus(farmId: string, itemId: string, status: TrimStatus): Promise<void> {
+      const item = await db.trimList.get(itemId);
+      if (!item || item.farmId !== farmId) throw new Error('Not on this farm’s list');
+      await db.trimList.update(itemId, { status, resolvedOn: status === 'todo' ? null : todayISO() });
+    },
+    async removeFromTrimList(farmId: string, itemId: string): Promise<void> {
+      const item = await db.trimList.get(itemId);
+      if (item && item.farmId === farmId) await db.trimList.delete(itemId);
+    },
+    /** Removes ticked-off entries (trimmed / not possible). Returns them for undo. */
+    async clearFinishedTrimList(farmId: string): Promise<DeletedSnapshot> {
+      const done = await db.trimList.where('farmId').equals(farmId).filter((t) => t.status !== 'todo').toArray();
+      await db.trimList.bulkDelete(done.map((t) => t.id));
+      return { farms: [], cows: [], visits: [], trimList: done };
+    },
+    async countFarmData(farmId: string): Promise<{ cows: number; visits: number }> {
+      const [cows, visits] = await Promise.all([
+        db.cows.where('farmId').equals(farmId).count(),
+        db.visits.where('farmId').equals(farmId).count(),
+      ]);
+      return { cows, visits };
     },
     async listCowVisits(farmId: string, cowId: string): Promise<Visit[]> {
       const visits = await db.visits.where('[farmId+cowId]').equals([farmId, cowId]).toArray();
@@ -194,22 +315,23 @@ export function createRepo(db: HoofDB) {
 
     // ---- Backup
     async exportAll(): Promise<BackupFile> {
-      const [farms, cows, visits, options] = await Promise.all([
-        db.farms.toArray(), db.cows.toArray(), db.visits.toArray(), db.options.toArray(),
+      const [farms, cows, visits, options, trimList] = await Promise.all([
+        db.farms.toArray(), db.cows.toArray(), db.visits.toArray(), db.options.toArray(), db.trimList.toArray(),
       ]);
-      return { app: 'HoofTrack', version: 1, exportedAt: nowStamp(), farms, cows, visits, options };
+      return { app: 'HoofTrack', version: 1, exportedAt: nowStamp(), farms, cows, visits, options, trimList };
     },
     async importAll(data: unknown): Promise<void> {
       const d = data as BackupFile;
       if (!d || d.app !== 'HoofTrack' || !Array.isArray(d.farms) || !Array.isArray(d.cows) || !Array.isArray(d.visits) || !Array.isArray(d.options)) {
         throw new Error('This is not a HoofTrack backup file');
       }
-      await db.transaction('rw', [db.farms, db.cows, db.visits, db.options], async () => {
-        await Promise.all([db.farms.clear(), db.cows.clear(), db.visits.clear(), db.options.clear()]);
+      await db.transaction('rw', [db.farms, db.cows, db.visits, db.options, db.trimList], async () => {
+        await Promise.all([db.farms.clear(), db.cows.clear(), db.visits.clear(), db.options.clear(), db.trimList.clear()]);
         await db.farms.bulkAdd(d.farms);
         await db.cows.bulkAdd(d.cows);
         await db.visits.bulkAdd(d.visits);
         await db.options.bulkAdd(d.options);
+        if (Array.isArray(d.trimList)) await db.trimList.bulkAdd(d.trimList);
       });
       await repo.ensureSeed();
     },
@@ -230,7 +352,9 @@ export function createRepo(db: HoofDB) {
       return added;
     },
     async removeDemo(): Promise<void> {
-      await db.transaction('rw', db.cows, db.visits, async () => {
+      await db.transaction('rw', db.cows, db.visits, db.trimList, async () => {
+        const demoCowIds = new Set((await db.cows.filter((c) => c.isDemo).toArray()).map((c) => c.id));
+        await db.trimList.filter((t) => demoCowIds.has(t.cowId)).delete();
         await db.visits.filter((v) => v.isDemo).delete();
         await db.cows.filter((c) => c.isDemo).delete();
       });

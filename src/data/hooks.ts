@@ -9,6 +9,7 @@ export const useCow = (farmId: string, cowId: string) =>
   useLiveQuery(async () => (await repo.getCow(farmId, cowId)) ?? null, [farmId, cowId]);
 export const useCowVisits = (farmId: string, cowId: string) => useLiveQuery(() => repo.listCowVisits(farmId, cowId), [farmId, cowId]);
 export const useDue = (farmId: string) => useLiveQuery(() => repo.listDue(farmId), [farmId]);
+export const useTrimList = (farmId: string) => useLiveQuery(() => repo.listTrimList(farmId), [farmId]);
 export const useOptions = () => useLiveQuery(() => repo.listOptions(), []);
 
 export function useOptionMap(): Map<string, OptionItem> {

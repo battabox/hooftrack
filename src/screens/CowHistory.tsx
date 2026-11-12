@@ -1,4 +1,5 @@
 import { useApp } from '../AppContext';
+import { repo } from '../data';
 import { useCow, useCowVisits, useOptionMap } from '../data/hooks';
 import { formatDate } from '../lib/dates';
 import { repeatFindings } from '../lib/flags';
@@ -7,7 +8,7 @@ import { go } from '../lib/router';
 import { Button, DemoBadge } from '../components/ui';
 
 export function CowHistory({ cowId }: { cowId: string }) {
-  const { farm } = useApp();
+  const { farm, toast } = useApp();
   const cow = useCow(farm.id, cowId);
   const visits = useCowVisits(farm.id, cowId);
   const opts = useOptionMap();
@@ -16,6 +17,24 @@ export function CowHistory({ cowId }: { cowId: string }) {
   if (cow === null) return <p className="text-xl font-bold">This cow is not on {farm.name}.</p>;
 
   const repeats = repeatFindings(visits, (id) => !!opts.get(id)?.isRoutine);
+
+  const deleteVisit = async (visitId: string, date: string) => {
+    if (!confirm(`Delete the visit of ${formatDate(date)} for cow ${cow.number}?`)) return;
+    try {
+      const snap = await repo.deleteVisit(farm.id, visitId);
+      toast({ message: `Visit of ${formatDate(date)} deleted`, actionLabel: 'Undo', onAction: () => repo.restore(snap) });
+    } catch (e) { alert((e as Error).message); }
+  };
+
+  const deleteCow = async () => {
+    const n = visits.length;
+    if (!confirm(`Delete cow ${cow.number}${n ? ` and all ${n} visit(s)` : ''}? This removes it from ${farm.name}.`)) return;
+    try {
+      const snap = await repo.deleteCow(farm.id, cow.id);
+      go('/cows');
+      toast({ message: `Cow ${cow.number} deleted`, actionLabel: 'Undo', onAction: () => repo.restore(snap) });
+    } catch (e) { alert((e as Error).message); }
+  };
 
   return (
     <div>
@@ -56,9 +75,22 @@ export function CowHistory({ cowId }: { cowId: string }) {
                   : `Recheck due ${formatDate(v.nextCheckDate)}`
                 : 'No recheck'}
             </p>
+            <div className="mt-2 flex justify-end">
+              <button
+                type="button"
+                onClick={() => deleteVisit(v.id, v.date)}
+                className="min-h-12 rounded-xl border-2 border-red-700 px-4 font-semibold text-red-700 dark:border-red-400 dark:text-red-400"
+              >
+                Delete visit
+              </button>
+            </div>
           </li>
         ))}
       </ol>
+
+      <div className="mt-10 border-t-2 border-neutral-300 pt-4 dark:border-neutral-700">
+        <Button variant="danger" className="w-full" onClick={deleteCow}>Delete cow {cow.number}</Button>
+      </div>
     </div>
   );
 }

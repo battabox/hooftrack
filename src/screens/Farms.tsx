@@ -11,6 +11,21 @@ export function Farms() {
   const [name, setName] = useState('');
   const [error, setError] = useState('');
 
+  const remove = async (id: string, name: string) => {
+    try {
+      const { cows, visits } = await repo.countFarmData(id);
+      if (!confirm(`Delete farm “${name}” with ${cows} cow(s) and ${visits} visit(s)?`)) return;
+      const snap = await repo.deleteFarm(id);
+      if (id === farm.id) {
+        const next = farms?.find((f) => f.id !== id);
+        if (next) selectFarm(next.id);
+      }
+      toast({ message: `Farm “${name}” deleted`, actionLabel: 'Undo', onAction: () => repo.restore(snap) });
+    } catch (e) {
+      alert((e as Error).message);
+    }
+  };
+
   const add = async () => {
     try {
       const f = await repo.addFarm(name);
@@ -31,17 +46,27 @@ export function Farms() {
         {farms?.map((f) => {
           const on = f.id === farm.id;
           return (
-            <li key={f.id}>
+            <li key={f.id} className="flex gap-2">
               <button
                 type="button"
                 onClick={() => { selectFarm(f.id); go('/'); }}
-                className={`flex min-h-16 w-full items-center justify-between rounded-xl border-2 px-4 text-left text-xl font-bold ${
+                className={`flex min-h-16 flex-1 items-center justify-between rounded-xl border-2 px-4 text-left text-xl font-bold ${
                   on ? 'border-green-800 bg-green-800 text-white' : 'border-neutral-400 dark:border-neutral-600'
                 }`}
               >
                 {f.name}
                 {on && <span className="text-base">✓ Current</span>}
               </button>
+              {(farms?.length ?? 0) > 1 && (
+                <button
+                  type="button"
+                  aria-label={`Delete farm ${f.name}`}
+                  onClick={() => remove(f.id, f.name)}
+                  className="min-h-16 rounded-xl border-2 border-red-700 px-3 font-semibold text-red-700 dark:border-red-400 dark:text-red-400"
+                >
+                  Delete
+                </button>
+              )}
             </li>
           );
         })}

@@ -5,4 +5,4 @@ export const db = new HoofDB();
 export const repo = createRepo(db);
 export * from './types';
 export { DuplicateCowError } from './repo';
-export type { DueItem } from './repo';
+export type { DueItem, TrimListEntry } from './repo';
