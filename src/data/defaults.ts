@@ -1,5 +1,10 @@
 import type { OptionItem } from './types';
 
+/** Farm created automatically on first start. */
+export const DEFAULT_FARM_NAME = 'Middelweerd Mantgum';
+/** Earlier versions created this farm; it is renamed once to DEFAULT_FARM_NAME. */
+export const OLD_DEFAULT_FARM_NAME = 'Demo Farm';
+
 const problems: [string, string, Partial<OptionItem>?][] = [
   ['p-routine', 'Routine trim / no problem', { isRoutine: true }],
   ['p-sole-ulcer', 'Sole ulcer'],

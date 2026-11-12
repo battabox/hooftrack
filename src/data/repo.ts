@@ -3,7 +3,7 @@
 // Every read that returns farm data takes a farmId, so one farm's data never leaks into another.
 
 import { HoofDB } from './db';
-import { defaultOptions } from './defaults';
+import { DEFAULT_FARM_NAME, defaultOptions } from './defaults';
 import { buildDemoData } from './demo';
 import { nextCheckDate, todayISO, type Recheck } from '../lib/dates';
 import type { BackupFile, Cow, Farm, FootRecord, OptionItem, OptionKind, Visit } from './types';
@@ -52,7 +52,7 @@ export function createRepo(db: HoofDB) {
     async ensureSeed(): Promise<void> {
       await db.transaction('rw', db.farms, db.options, async () => {
         if ((await db.farms.count()) === 0) {
-          await db.farms.add({ id: newId(), name: 'Demo Farm', createdAt: nowStamp() });
+          await db.farms.add({ id: newId(), name: DEFAULT_FARM_NAME, createdAt: nowStamp() });
         }
         if ((await db.options.count()) === 0) await db.options.bulkAdd(defaultOptions());
       });

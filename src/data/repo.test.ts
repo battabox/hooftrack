@@ -1,6 +1,7 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { HoofDB } from './db';
+import Dexie from 'dexie';
+import { HoofDB, SCHEMA_V1 } from './db';
 import { createRepo, DuplicateCowError, type Repo } from './repo';
 import { repeatFindings } from '../lib/flags';
 
@@ -16,8 +17,21 @@ beforeEach(async () => {
 });
 
 describe('duplicate cow prevention', () => {
-  it('pre-creates Demo Farm', async () => {
-    expect((await repo.listFarms()).map((f) => f.name)).toContain('Demo Farm');
+  it('pre-creates the default farm', async () => {
+    expect((await repo.listFarms()).map((f) => f.name)).toContain('Middelweerd Mantgum');
+  });
+
+  it('renames an existing "Demo Farm" once, keeping its cows', async () => {
+    const name = `migrate-${Math.random()}`;
+    const v1 = new Dexie(name);
+    v1.version(1).stores(SCHEMA_V1);
+    await v1.table('farms').add({ id: 'f1', name: 'Demo Farm', createdAt: '2026-11-01' });
+    await v1.table('cows').add({ id: 'c1', farmId: 'f1', number: '12', numberKey: '12', createdAt: '2026-11-01', isDemo: false });
+    v1.close();
+
+    const migrated = createRepo(new HoofDB(name));
+    expect((await migrated.listFarms()).map((f) => f.name)).toEqual(['Middelweerd Mantgum']);
+    expect(await migrated.getCow('f1', 'c1')).toMatchObject({ number: '12' });
   });
 
   it('rejects the same cow number twice on one farm', async () => {
