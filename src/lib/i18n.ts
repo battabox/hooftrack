@@ -193,6 +193,9 @@ const en = {
   'list.remove': 'Remove',
 
   'cap.speak': '🎤 Speak numbers',
+  'cap.speakOne': '🎤 Say the number',
+  'cap.listeningOne': 'Listening… say the cow number',
+  'cap.heardOne': 'Heard: “{text}”',
   'cap.stop': '■ Stop listening',
   'cap.photo': '📷 Photo of ear tag',
   'cap.listening': 'Listening… say the numbers, e.g. “1234 and 5678”',
@@ -414,6 +417,9 @@ const nl: Record<Key, string> = {
   'list.remove': 'Verwijderen',
 
   'cap.speak': '🎤 Nummers inspreken',
+  'cap.speakOne': '🎤 Nummer inspreken',
+  'cap.listeningOne': 'Luisteren… zeg het koenummer',
+  'cap.heardOne': 'Gehoord: “{text}”',
   'cap.stop': '■ Stop luisteren',
   'cap.photo': '📷 Foto van oormerk',
   'cap.listening': 'Luisteren… zeg de nummers, bijv. “1234 en 5678”',

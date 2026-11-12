@@ -6,6 +6,7 @@ import { cowNumberKey, displayCowNumber } from '../data/repo';
 import { useL } from '../lib/i18n';
 import { go } from '../lib/router';
 import { Button, DemoBadge, inputClass } from '../components/ui';
+import { NumberCapture } from '../components/NumberCapture';
 
 export function FindCow() {
   const { farm } = useApp();
@@ -47,6 +48,7 @@ export function FindCow() {
           onChange={(e) => { setQ(e.target.value); setError(''); }}
         />
       </form>
+      <NumberCapture single onNumbers={(nums) => { setQ(nums[0]); setError(''); }} />
 
       {key && !exact && (
         <Button variant="primary" className="mt-3 w-full text-xl" onClick={add}>

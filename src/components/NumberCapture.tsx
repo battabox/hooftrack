@@ -44,13 +44,17 @@ async function prepareImage(file: File): Promise<HTMLCanvasElement> {
   }
 }
 
-/** 🎤 / 📷 buttons. Found numbers go to onNumbers so the user can check them before adding. */
-export function NumberCapture({ onNumbers }: { onNumbers: (nums: string[]) => void }) {
+/**
+ * 🎤 / 📷 buttons. Found numbers go to onNumbers so the user can check them before using them.
+ * single: for looking up one cow (shorter hints, only the first spoken number is used).
+ */
+export function NumberCapture({ onNumbers, single = false }: { onNumbers: (nums: string[]) => void; single?: boolean }) {
   const l = useL();
   const [status, setStatus] = useState<Status>({ kind: 'idle' });
   const [choices, setChoices] = useState<string[]>([]);
   const recRef = useRef<{ stop: () => void } | null>(null);
   const busy = status.kind === 'busy';
+  const listening = busy && (status.key === 'cap.listening' || status.key === 'cap.listeningOne');
 
   const listen = () => {
     if (!SpeechRecognitionCtor) { setStatus({ kind: 'error', key: 'cap.noSpeech' }); return; }
@@ -64,7 +68,10 @@ export function NumberCapture({ onNumbers }: { onNumbers: (nums: string[]) => vo
     rec.onresult = (e: any) => {
       const text = Array.from(e.results as ArrayLike<ArrayLike<{ transcript: string }>>).map((r) => r[0].transcript).join(' ');
       const nums = numbersFromSpeech(text);
-      if (nums.length) { onNumbers(nums); setStatus({ kind: 'info', key: 'cap.heard', vars: { text } }); }
+      if (nums.length) {
+        onNumbers(single ? nums.slice(0, 1) : nums);
+        setStatus({ kind: 'info', key: single ? 'cap.heardOne' : 'cap.heard', vars: { text } });
+      }
       else setStatus({ kind: 'error', key: 'cap.noNumberHeard', vars: { text } });
     };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -81,7 +88,7 @@ export function NumberCapture({ onNumbers }: { onNumbers: (nums: string[]) => vo
     };
     recRef.current = rec;
     setChoices([]);
-    setStatus({ kind: 'busy', key: 'cap.listening' });
+    setStatus({ kind: 'busy', key: single ? 'cap.listeningOne' : 'cap.listening' });
     try { rec.start(); } catch { recRef.current = null; setStatus({ kind: 'error', key: 'cap.speechFailed', vars: { err: 'start' } }); }
   };
 
@@ -118,10 +125,10 @@ export function NumberCapture({ onNumbers }: { onNumbers: (nums: string[]) => vo
         <button
           type="button"
           onClick={listen}
-          disabled={busy && status.key !== 'cap.listening'}
-          className={`${btn} ${status.kind === 'busy' && status.key === 'cap.listening' ? 'animate-pulse bg-red-700 text-white border-red-700' : ''} disabled:opacity-40`}
+          disabled={busy && !listening}
+          className={`${btn} ${listening ? 'animate-pulse bg-red-700 text-white border-red-700' : ''} disabled:opacity-40`}
         >
-          {status.kind === 'busy' && status.key === 'cap.listening' ? l.t('cap.stop') : l.t('cap.speak')}
+          {listening ? l.t('cap.stop') : single ? l.t('cap.speakOne') : l.t('cap.speak')}
         </button>
         <label className={`${btn} cursor-pointer ${busy ? 'pointer-events-none opacity-40' : ''}`}>
           {l.t('cap.photo')}
@@ -150,7 +157,12 @@ export function NumberCapture({ onNumbers }: { onNumbers: (nums: string[]) => vo
             <button
               key={n}
               type="button"
-              onClick={() => { onNumbers([n]); setChoices((c) => c.filter((x) => x !== n)); setStatus({ kind: 'info', key: 'cap.check' }); }}
+              onClick={() => {
+                onNumbers([n]);
+                if (single) { setChoices([]); setStatus({ kind: 'idle' }); return; }
+                setChoices((c) => c.filter((x) => x !== n));
+                setStatus({ kind: 'info', key: 'cap.check' });
+              }}
               className="min-h-14 rounded-xl border-2 border-green-800 bg-green-800 px-4 text-xl font-extrabold text-white"
             >
               + {n}
