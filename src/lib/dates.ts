@@ -93,8 +93,8 @@ export function dueBucket(due: string, today: string): DueBucket {
   return 'later';
 }
 
-export function formatDate(iso: string): string {
-  return new Intl.DateTimeFormat('en-GB', {
+export function formatDate(iso: string, locale = 'en-GB'): string {
+  return new Intl.DateTimeFormat(locale, {
     timeZone: 'UTC',
     weekday: 'short',
     day: 'numeric',

@@ -1,26 +1,28 @@
 import type { ReactNode } from 'react';
 import { useApp } from '../AppContext';
+import { useL, type Key } from '../lib/i18n';
 import { go } from '../lib/router';
 
-const NAV = [
-  { path: '/', key: '', label: 'Due', icon: '📅' },
-  { path: '/list', key: 'list', label: 'To trim', icon: '📋' },
-  { path: '/cows', key: 'cows', label: 'Cows', icon: '🐄' },
-  { path: '/farms', key: 'farms', label: 'Farms', icon: '🏠' },
-  { path: '/settings', key: 'settings', label: 'Settings', icon: '⚙️' },
+const NAV: { path: string; key: string; label: Key; icon: string }[] = [
+  { path: '/', key: '', label: 'nav.due', icon: '📅' },
+  { path: '/list', key: 'list', label: 'nav.list', icon: '📋' },
+  { path: '/cows', key: 'cows', label: 'nav.cows', icon: '🐄' },
+  { path: '/farms', key: 'farms', label: 'nav.farms', icon: '🏠' },
+  { path: '/settings', key: 'settings', label: 'nav.settings', icon: '⚙️' },
 ];
 
 export function Layout(props: { children: ReactNode; active: string; hideNav?: boolean }) {
   const { farm } = useApp();
+  const l = useL();
   return (
     <div className="mx-auto min-h-dvh max-w-xl">
       <header className="sticky top-0 z-20 border-b-2 border-green-950 bg-green-900 px-4 pt-[env(safe-area-inset-top)] text-white">
         <button type="button" onClick={() => go('/farms')} className="flex min-h-14 w-full items-center justify-between gap-3 text-left">
           <span className="min-w-0">
-            <span className="block text-xs font-semibold tracking-widest text-green-200 uppercase">HoofTrack · Farm</span>
+            <span className="block text-xs font-semibold tracking-widest text-green-200 uppercase">{l.t('header.farm')}</span>
             <span className="block truncate text-xl font-extrabold">{farm.name}</span>
           </span>
-          <span className="shrink-0 rounded-lg border border-green-300 px-2 py-1 text-sm font-semibold">Change</span>
+          <span className="shrink-0 rounded-lg border border-green-300 px-2 py-1 text-sm font-semibold">{l.t('header.change')}</span>
         </button>
       </header>
 
@@ -37,12 +39,12 @@ export function Layout(props: { children: ReactNode; active: string; hideNav?: b
                   type="button"
                   onClick={() => go(n.path)}
                   aria-current={on ? 'page' : undefined}
-                  className={`flex min-h-16 flex-col items-center justify-center text-sm font-bold ${
+                  className={`flex min-h-16 flex-col items-center justify-center px-0.5 text-center text-xs leading-tight font-bold ${
                     on ? 'bg-neutral-950 text-white dark:bg-white dark:text-neutral-950' : 'text-neutral-700 dark:text-neutral-300'
                   }`}
                 >
                   <span className="text-2xl" aria-hidden="true">{n.icon}</span>
-                  {n.label}
+                  {l.t(n.label)}
                 </button>
               );
             })}

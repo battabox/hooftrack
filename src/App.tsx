@@ -3,6 +3,7 @@ import { AppContext, type AppCtx, type ToastInput } from './AppContext';
 import { repo } from './data';
 import { useFarms } from './data/hooks';
 import { useRoute } from './lib/router';
+import { LangContext, getLangPref, saveLangPref, translate, type Lang } from './lib/i18n';
 import { Layout } from './components/Layout';
 import { Dashboard } from './screens/Dashboard';
 import { FindCow } from './screens/FindCow';
@@ -18,11 +19,16 @@ const readFarmId = () => { try { return localStorage.getItem(FARM_KEY); } catch 
 export default function App() {
   const farms = useFarms();
   const [farmId, setFarmId] = useState<string | null>(readFarmId);
+  const [lang, setLangState] = useState<Lang>(getLangPref);
   const [toast, setToast] = useState<ToastInput | null>(null);
   const timer = useRef<number | undefined>(undefined);
   const route = useRoute();
 
   useEffect(() => { repo.ensureSeed(); }, []);
+  useEffect(() => { document.documentElement.lang = lang; }, [lang]);
+
+  const setLang = useCallback((l: Lang) => { setLangState(l); saveLangPref(l); }, []);
+  const langCtx = useMemo(() => ({ lang, setLang }), [lang, setLang]);
 
   const selectFarm = useCallback((id: string) => {
     setFarmId(id);
@@ -38,7 +44,7 @@ export default function App() {
   const farm = farms?.find((f) => f.id === farmId) ?? farms?.[0];
   const ctx = useMemo<AppCtx | null>(() => (farm ? { farm, selectFarm, toast: showToast } : null), [farm, selectFarm, showToast]);
 
-  if (!ctx) return <div className="p-6 text-xl">Loading…</div>;
+  if (!ctx) return <div className="p-6 text-xl">{translate(lang, 'app.loading')}</div>;
 
   const [page, id] = route;
   let screen;
@@ -55,25 +61,27 @@ export default function App() {
   }
 
   return (
-    <AppContext.Provider value={ctx}>
-      <Layout key={ctx.farm.id} active={active} hideNav={hideNav}>{screen}</Layout>
-      {toast && (
-        <div role="status" className="fixed inset-x-0 bottom-20 z-50 mx-auto max-w-xl px-3 pb-[env(safe-area-inset-bottom)]">
-          <div className="flex items-center gap-3 rounded-2xl border-2 border-green-950 bg-green-800 p-3 text-lg font-bold text-white shadow-2xl">
-            <span className="flex-1">{toast.message}</span>
-            {toast.onAction && (
-              <button
-                type="button"
-                className="min-h-12 rounded-xl border-2 border-white bg-white px-4 text-green-900"
-                onClick={async () => { const fn = toast.onAction!; setToast(null); await fn(); }}
-              >
-                {toast.actionLabel ?? 'Undo'}
-              </button>
-            )}
-            <button type="button" aria-label="Dismiss" className="min-h-12 min-w-12 text-2xl" onClick={() => setToast(null)}>×</button>
+    <LangContext.Provider value={langCtx}>
+      <AppContext.Provider value={ctx}>
+        <Layout key={ctx.farm.id} active={active} hideNav={hideNav}>{screen}</Layout>
+        {toast && (
+          <div role="status" className="fixed inset-x-0 bottom-20 z-50 mx-auto max-w-xl px-3 pb-[env(safe-area-inset-bottom)]">
+            <div className="flex items-center gap-3 rounded-2xl border-2 border-green-950 bg-green-800 p-3 text-lg font-bold text-white shadow-2xl">
+              <span className="flex-1">{toast.message}</span>
+              {toast.onAction && (
+                <button
+                  type="button"
+                  className="min-h-12 rounded-xl border-2 border-white bg-white px-4 text-green-900"
+                  onClick={async () => { const fn = toast.onAction!; setToast(null); await fn(); }}
+                >
+                  {toast.actionLabel ?? translate(lang, 'common.undo')}
+                </button>
+              )}
+              <button type="button" aria-label={translate(lang, 'common.dismiss')} className="min-h-12 min-w-12 text-2xl" onClick={() => setToast(null)}>×</button>
+            </div>
           </div>
-        </div>
-      )}
-    </AppContext.Provider>
+        )}
+      </AppContext.Provider>
+    </LangContext.Provider>
   );
 }

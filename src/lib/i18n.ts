@@ -1,0 +1,489 @@
+import { createContext, useContext, useMemo } from 'react';
+import { defaultOptions } from '../data/defaults';
+import type { OptionItem } from '../data/types';
+import { diffDays, formatDate } from './dates';
+
+export type Lang = 'en' | 'nl';
+export const LANGUAGES: { id: Lang; label: string }[] = [
+  { id: 'en', label: 'English' },
+  { id: 'nl', label: 'Nederlands' },
+];
+
+const en = {
+  'app.loading': 'Loading…',
+  'common.undo': 'Undo',
+  'common.dismiss': 'Dismiss',
+  'common.cancel': 'Cancel',
+  'common.confirm': 'Confirm',
+  'common.add': 'Add',
+  'common.close': 'Close',
+  'common.delete': 'Delete',
+  'common.optional': 'optional',
+  'common.required': 'required',
+  'common.none': 'None',
+  'common.save': 'Save',
+
+  'nav.due': 'Due',
+  'nav.list': 'To trim',
+  'nav.cows': 'Cows',
+  'nav.farms': 'Farms',
+  'nav.settings': 'Settings',
+  'header.farm': 'HoofTrack · Farm',
+  'header.change': 'Change',
+
+  'foot.LF': 'Left Front',
+  'foot.RF': 'Right Front',
+  'foot.LR': 'Left Rear',
+  'foot.RR': 'Right Rear',
+  'claw.inner': 'Inner claw',
+  'claw.outer': 'Outer claw',
+  'claw.both': 'Both',
+  'sev.mild': 'Mild',
+  'sev.moderate': 'Moderate',
+  'sev.severe': 'Severe',
+
+  'date.today': 'today',
+  'date.tomorrow': 'tomorrow',
+  'date.overdue1': '1 day overdue',
+  'date.overdueN': '{n} days overdue',
+  'date.inN': 'in {n} days',
+
+  'recheck.none': 'No recheck',
+  'recheck.w1': '1 week',
+  'recheck.w2': '2 weeks',
+  'recheck.w3': '3 weeks',
+  'recheck.custom': 'Custom…',
+  'recheck.inWeeks': 'In weeks',
+  'recheck.onDate': 'On date',
+  'recheck.weeksPh': 'Number of weeks',
+  'recheck.errWeeks': 'Enter 1 to 52 weeks',
+  'recheck.errDate': 'Date must be after the visit date',
+  'recheck.next': 'Next check: {date}',
+  'recheck.nonePlanned': 'No recheck planned',
+
+  'dash.title': 'Rechecks',
+  'dash.today': 'Today: {date}',
+  'dash.record': '+ Record a trim',
+  'dash.overdue': 'Overdue',
+  'dash.thisWeek': 'Due this week',
+  'dash.nextWeek': 'Due next week',
+  'dash.later': '{n} more recheck(s) planned later.',
+  'dash.markChecked': '✓ Mark checked',
+
+  'check.title': 'Mark cow {cow} checked',
+  'check.sub': 'Checked today ({date}). New recheck?',
+  'check.done': '✓ Cow {cow} checked. {next}',
+  'check.next': 'Next check {date}',
+  'check.noMore': 'No further recheck',
+
+  'find.title': 'Find or add cow',
+  'find.label': 'Ear tag or cow number',
+  'find.ph': 'e.g. 1234',
+  'find.add': '+ Add cow “{cow}” and record trim',
+  'find.dup': 'Cow {cow} already exists on this farm.',
+  'find.record': 'Record trim →',
+  'find.history': 'History',
+  'find.empty': 'No cows on this farm yet. Type a number above to add one.',
+
+  'trim.cow': 'Cow {cow}',
+  'trim.notOnFarm': 'This cow is not on {farm}.',
+  'trim.date': 'Date',
+  'trim.feet': 'Feet',
+  'trim.feetHint': 'tap all that apply',
+  'trim.problem': 'Problem',
+  'trim.severity': 'Severity',
+  'trim.otherProblem': 'Describe other problem',
+  'trim.treatment': 'Treatment',
+  'trim.otherTreatment': 'Describe other treatment',
+  'trim.notes': 'Notes',
+  'trim.recheck': 'Recheck',
+  'trim.stillNeeded': 'Still needed: {list}',
+  'trim.mSelectFoot': 'Select a foot',
+  'trim.mClaw': 'Claw for {foot}',
+  'trim.mProblem': 'Problem for {foot}',
+  'trim.mOther': 'Describe “Other” for {foot}',
+  'trim.mOtherTreat': 'Describe “Other” treatment',
+  'trim.mRecheck': 'Choose recheck',
+  'trim.mDate': 'Valid date',
+  'trim.saved': '✓ Saved cow {cow}. {next}',
+  'trim.undone': 'Last save for cow {cow} undone',
+
+  'cow.repeatTitle': '⚑ Same problem recorded more than once on the same foot',
+  'cow.record': '+ Record trim',
+  'cow.visits': 'Visits ({n})',
+  'cow.noVisits': 'No visits recorded yet.',
+  'cow.kindTrim': 'Trim',
+  'cow.kindCheck': 'Recheck',
+  'cow.followUp': 'Follow-up of earlier record:',
+  'cow.treatment': 'Treatment:',
+  'cow.notes': 'Notes:',
+  'cow.recheckChecked': 'Recheck {due} — checked {on}',
+  'cow.recheckDue': 'Recheck due {due}',
+  'cow.noRecheck': 'No recheck',
+  'cow.deleteVisit': 'Delete visit',
+  'cow.deleteCow': 'Delete cow {cow}',
+  'cow.confirmVisit': 'Delete the visit of {date} for cow {cow}?',
+  'cow.confirmCow': 'Delete cow {cow} and all {n} visit(s)? This removes it from {farm}.',
+  'cow.confirmCowNoVisits': 'Delete cow {cow}? This removes it from {farm}.',
+  'cow.visitDeleted': 'Visit of {date} deleted',
+  'cow.cowDeleted': 'Cow {cow} deleted',
+
+  'farms.title': 'Farms',
+  'farms.sub': 'Tap a farm to work on it. Each farm’s cows are kept separate.',
+  'farms.current': '✓ Current',
+  'farms.addLabel': 'Add a farm',
+  'farms.namePh': 'Farm name',
+  'farms.added': 'Farm “{farm}” added and selected',
+  'farms.confirmDelete': 'Delete farm “{farm}” with {cows} cow(s) and {visits} visit(s)?',
+  'farms.deleted': 'Farm “{farm}” deleted',
+  'farms.deleteAria': 'Delete farm {farm}',
+
+  'set.title': 'Settings',
+  'set.display': 'Display',
+  'set.auto': 'Auto',
+  'set.light': 'Light',
+  'set.dark': 'Dark',
+  'set.language': 'Language / Taal',
+  'set.problems': 'Problem list',
+  'set.treatments': 'Treatment list',
+  'set.listHint': 'rename, hide or add',
+  'set.newProblem': 'New problem',
+  'set.newTreatment': 'New treatment',
+  'set.hide': 'Hide',
+  'set.show': 'Show',
+  'set.rename': 'Rename {name}',
+  'set.backup': 'Backup',
+  'set.export': '⬇ Export all data (JSON)',
+  'set.import': '⬆ Import backup',
+  'set.confirmImport': 'Replace ALL data on this phone with this backup? This cannot be undone.',
+  'set.imported': '✓ Backup imported',
+  'set.importFailed': 'Import failed: {msg}',
+  'set.demo': 'Demo data',
+  'set.demoText': 'Adds 15 sample cows (DEMO-001 … DEMO-015) with sample visits to {farm}. All are labelled DEMO.',
+  'set.loadDemo': 'Load demo data',
+  'set.removeDemo': 'Remove all demo data',
+  'set.demoAdded': '✓ Added {n} DEMO cows to {farm}',
+  'set.demoAlready': 'Demo data is already loaded on this farm',
+  'set.confirmRemoveDemo': 'Remove all DEMO cows and visits from every farm?',
+  'set.demoRemoved': 'Demo data removed',
+  'set.footer': 'HoofTrack demo · data is stored only on this device. HoofTrack only records what you select; it does not diagnose or suggest treatments.',
+
+  'list.title': 'To trim',
+  'list.progress': '{done} of {total} trimmed',
+  'list.notPossibleCount': '{n} not possible',
+  'list.addTitle': 'Add cows to the list',
+  'list.addHelp': 'Type or paste cow numbers, one per line. You can paste a list from WhatsApp or a text message.',
+  'list.addBtn': 'Add to list',
+  'list.addCows': '+ Add cows',
+  'list.share': 'Share list',
+  'list.shareText': 'Cows to trim – {farm}:',
+  'list.copied': 'List copied – paste it in WhatsApp or a text message',
+  'list.rAdded': '{n} added',
+  'list.rNew': '{n} new cow(s) created: {list}',
+  'list.rAlready': 'already on the list: {list}',
+  'list.stillTodo': 'Still to trim ({n})',
+  'list.allDone': '✓ All cows on the list are done.',
+  'list.finished': 'Finished ({n})',
+  'list.clear': 'Clear finished',
+  'list.cleared': '{n} finished cow(s) cleared',
+  'list.trimmed': '✓ Trimmed',
+  'list.notPossible': '✗ Not possible',
+  'list.added': 'added {date}',
+  'list.recordDetails': 'Record trim details →',
+  'list.remove': 'Remove',
+
+  // Default problem / treatment names (only used while the user has not renamed them)
+  'opt.p-routine': 'Routine trim / no problem',
+  'opt.p-sole-ulcer': 'Sole ulcer',
+  'opt.p-sole-haem': 'Sole haemorrhage',
+  'opt.p-wld': 'White line disease',
+  'opt.p-dd': 'Digital dermatitis',
+  'opt.p-corn': 'Interdigital hyperplasia (corn)',
+  'opt.p-foot-rot': 'Foot rot',
+  'opt.p-heel-erosion': 'Heel erosion',
+  'opt.p-toe-ulcer': 'Toe ulcer',
+  'opt.p-double-sole': 'Double sole',
+  'opt.p-thin-sole': 'Thin sole',
+  'opt.p-other': 'Other',
+  'opt.t-block': 'Block applied',
+  'opt.t-bandage': 'Bandage',
+  'opt.t-spray': 'Spray',
+  'opt.t-vet': 'Referred to vet',
+  'opt.t-other': 'Other',
+};
+
+export type Key = keyof typeof en;
+
+const nl: Record<Key, string> = {
+  'app.loading': 'Laden…',
+  'common.undo': 'Ongedaan maken',
+  'common.dismiss': 'Sluiten',
+  'common.cancel': 'Annuleren',
+  'common.confirm': 'Bevestigen',
+  'common.add': 'Toevoegen',
+  'common.close': 'Sluiten',
+  'common.delete': 'Verwijderen',
+  'common.optional': 'optioneel',
+  'common.required': 'verplicht',
+  'common.none': 'Geen',
+  'common.save': 'Opslaan',
+
+  'nav.due': 'Controles',
+  'nav.list': 'Bekappen',
+  'nav.cows': 'Koeien',
+  'nav.farms': 'Bedrijven',
+  'nav.settings': 'Instellingen',
+  'header.farm': 'HoofTrack · Bedrijf',
+  'header.change': 'Wissel',
+
+  'foot.LF': 'Linksvoor',
+  'foot.RF': 'Rechtsvoor',
+  'foot.LR': 'Linksachter',
+  'foot.RR': 'Rechtsachter',
+  // ­ = soft hyphen: invisible, but lets long Dutch words break at a sensible spot on small buttons
+  'claw.inner': 'Binnen­klauw',
+  'claw.outer': 'Buiten­klauw',
+  'claw.both': 'Beide',
+  'sev.mild': 'Licht',
+  'sev.moderate': 'Matig',
+  'sev.severe': 'Ernstig',
+
+  'date.today': 'vandaag',
+  'date.tomorrow': 'morgen',
+  'date.overdue1': '1 dag te laat',
+  'date.overdueN': '{n} dagen te laat',
+  'date.inN': 'over {n} dagen',
+
+  'recheck.none': 'Geen controle',
+  'recheck.w1': '1 week',
+  'recheck.w2': '2 weken',
+  'recheck.w3': '3 weken',
+  'recheck.custom': 'Anders…',
+  'recheck.inWeeks': 'Over weken',
+  'recheck.onDate': 'Op datum',
+  'recheck.weeksPh': 'Aantal weken',
+  'recheck.errWeeks': 'Vul 1 tot 52 weken in',
+  'recheck.errDate': 'Datum moet na de bezoekdatum liggen',
+  'recheck.next': 'Volgende controle: {date}',
+  'recheck.nonePlanned': 'Geen controle gepland',
+
+  'dash.title': 'Controles',
+  'dash.today': 'Vandaag: {date}',
+  'dash.record': '+ Bekapping vastleggen',
+  'dash.overdue': 'Te laat',
+  'dash.thisWeek': 'Deze week',
+  'dash.nextWeek': 'Volgende week',
+  'dash.later': 'Nog {n} controle(s) later gepland.',
+  'dash.markChecked': '✓ Gecontroleerd',
+
+  'check.title': 'Koe {cow} gecontroleerd',
+  'check.sub': 'Vandaag gecontroleerd ({date}). Nieuwe controle?',
+  'check.done': '✓ Koe {cow} gecontroleerd. {next}',
+  'check.next': 'Volgende controle {date}',
+  'check.noMore': 'Geen verdere controle',
+
+  'find.title': 'Koe zoeken of toevoegen',
+  'find.label': 'Oormerk of koenummer',
+  'find.ph': 'bijv. 1234',
+  'find.add': '+ Koe “{cow}” toevoegen en bekappen',
+  'find.dup': 'Koe {cow} bestaat al op dit bedrijf.',
+  'find.record': 'Bekappen →',
+  'find.history': 'Historie',
+  'find.empty': 'Nog geen koeien op dit bedrijf. Typ hierboven een nummer om er een toe te voegen.',
+
+  'trim.cow': 'Koe {cow}',
+  'trim.notOnFarm': 'Deze koe staat niet op {farm}.',
+  'trim.date': 'Datum',
+  'trim.feet': 'Poten',
+  'trim.feetHint': 'tik alles aan wat van toepassing is',
+  'trim.problem': 'Probleem',
+  'trim.severity': 'Ernst',
+  'trim.otherProblem': 'Beschrijf het andere probleem',
+  'trim.treatment': 'Behandeling',
+  'trim.otherTreatment': 'Beschrijf de andere behandeling',
+  'trim.notes': 'Notities',
+  'trim.recheck': 'Controle',
+  'trim.stillNeeded': 'Nog nodig: {list}',
+  'trim.mSelectFoot': 'Kies een poot',
+  'trim.mClaw': 'Klauw voor {foot}',
+  'trim.mProblem': 'Probleem voor {foot}',
+  'trim.mOther': 'Beschrijf “Anders” voor {foot}',
+  'trim.mOtherTreat': 'Beschrijf “Anders” bij behandeling',
+  'trim.mRecheck': 'Kies controle',
+  'trim.mDate': 'Geldige datum',
+  'trim.saved': '✓ Koe {cow} opgeslagen. {next}',
+  'trim.undone': 'Laatste opslag voor koe {cow} ongedaan gemaakt',
+
+  'cow.repeatTitle': '⚑ Zelfde probleem meer dan eens vastgelegd op dezelfde poot',
+  'cow.record': '+ Bekapping vastleggen',
+  'cow.visits': 'Bezoeken ({n})',
+  'cow.noVisits': 'Nog geen bezoeken vastgelegd.',
+  'cow.kindTrim': 'Bekapping',
+  'cow.kindCheck': 'Controle',
+  'cow.followUp': 'Vervolg op eerder bezoek:',
+  'cow.treatment': 'Behandeling:',
+  'cow.notes': 'Notities:',
+  'cow.recheckChecked': 'Controle {due} — gecontroleerd {on}',
+  'cow.recheckDue': 'Controle op {due}',
+  'cow.noRecheck': 'Geen controle',
+  'cow.deleteVisit': 'Bezoek verwijderen',
+  'cow.deleteCow': 'Koe {cow} verwijderen',
+  'cow.confirmVisit': 'Het bezoek van {date} voor koe {cow} verwijderen?',
+  'cow.confirmCow': 'Koe {cow} en alle {n} bezoek(en) verwijderen? De koe verdwijnt van {farm}.',
+  'cow.confirmCowNoVisits': 'Koe {cow} verwijderen? De koe verdwijnt van {farm}.',
+  'cow.visitDeleted': 'Bezoek van {date} verwijderd',
+  'cow.cowDeleted': 'Koe {cow} verwijderd',
+
+  'farms.title': 'Bedrijven',
+  'farms.sub': 'Tik op een bedrijf om ermee te werken. De koeien van elk bedrijf blijven gescheiden.',
+  'farms.current': '✓ Huidig',
+  'farms.addLabel': 'Bedrijf toevoegen',
+  'farms.namePh': 'Naam van het bedrijf',
+  'farms.added': 'Bedrijf “{farm}” toegevoegd en gekozen',
+  'farms.confirmDelete': 'Bedrijf “{farm}” met {cows} koe(ien) en {visits} bezoek(en) verwijderen?',
+  'farms.deleted': 'Bedrijf “{farm}” verwijderd',
+  'farms.deleteAria': 'Bedrijf {farm} verwijderen',
+
+  'set.title': 'Instellingen',
+  'set.display': 'Weergave',
+  'set.auto': 'Automatisch',
+  'set.light': 'Licht',
+  'set.dark': 'Donker',
+  'set.language': 'Taal / Language',
+  'set.problems': 'Problemenlijst',
+  'set.treatments': 'Behandelingenlijst',
+  'set.listHint': 'hernoemen, verbergen of toevoegen',
+  'set.newProblem': 'Nieuw probleem',
+  'set.newTreatment': 'Nieuwe behandeling',
+  'set.hide': 'Verberg',
+  'set.show': 'Toon',
+  'set.rename': '{name} hernoemen',
+  'set.backup': 'Back-up',
+  'set.export': '⬇ Alle gegevens exporteren (JSON)',
+  'set.import': '⬆ Back-up importeren',
+  'set.confirmImport': 'ALLE gegevens op deze telefoon vervangen door deze back-up? Dit kan niet ongedaan worden gemaakt.',
+  'set.imported': '✓ Back-up geïmporteerd',
+  'set.importFailed': 'Importeren mislukt: {msg}',
+  'set.demo': 'Demogegevens',
+  'set.demoText': 'Voegt 15 voorbeeldkoeien (DEMO-001 … DEMO-015) met voorbeeldbezoeken toe aan {farm}. Alles is gemarkeerd als DEMO.',
+  'set.loadDemo': 'Demogegevens laden',
+  'set.removeDemo': 'Alle demogegevens verwijderen',
+  'set.demoAdded': '✓ {n} DEMO-koeien toegevoegd aan {farm}',
+  'set.demoAlready': 'Demogegevens zijn al geladen op dit bedrijf',
+  'set.confirmRemoveDemo': 'Alle DEMO-koeien en -bezoeken van alle bedrijven verwijderen?',
+  'set.demoRemoved': 'Demogegevens verwijderd',
+  'set.footer': 'HoofTrack demo · gegevens staan alleen op dit apparaat. HoofTrack legt alleen vast wat u kiest; het stelt geen diagnose en geeft geen behandeladvies.',
+
+  'list.title': 'Bekappen',
+  'list.progress': '{done} van {total} bekapt',
+  'list.notPossibleCount': '{n} niet gelukt',
+  'list.addTitle': 'Koeien op de lijst zetten',
+  'list.addHelp': 'Typ of plak koenummers, één per regel. U kunt een lijst uit WhatsApp of een sms plakken.',
+  'list.addBtn': 'Op de lijst zetten',
+  'list.addCows': '+ Koeien toevoegen',
+  'list.share': 'Lijst delen',
+  'list.shareText': 'Te bekappen koeien – {farm}:',
+  'list.copied': 'Lijst gekopieerd – plak hem in WhatsApp of een sms',
+  'list.rAdded': '{n} toegevoegd',
+  'list.rNew': '{n} nieuwe koe(ien) aangemaakt: {list}',
+  'list.rAlready': 'staat al op de lijst: {list}',
+  'list.stillTodo': 'Nog te bekappen ({n})',
+  'list.allDone': '✓ Alle koeien op de lijst zijn klaar.',
+  'list.finished': 'Klaar ({n})',
+  'list.clear': 'Klaar wissen',
+  'list.cleared': '{n} klare koe(ien) gewist',
+  'list.trimmed': '✓ Bekapt',
+  'list.notPossible': '✗ Niet gelukt',
+  'list.added': 'toegevoegd {date}',
+  'list.recordDetails': 'Bekapping vastleggen →',
+  'list.remove': 'Verwijderen',
+
+  'opt.p-routine': 'Routinebekapping / geen probleem',
+  'opt.p-sole-ulcer': 'Zoolzweer',
+  'opt.p-sole-haem': 'Zoolbloeding',
+  'opt.p-wld': 'Witte-lijndefect',
+  'opt.p-dd': 'Mortellaro (digitale dermatitis)',
+  'opt.p-corn': 'Tussen­klauw­woekering (tyloom)',
+  'opt.p-foot-rot': 'Tussen­klauw­ontsteking (panaritium)',
+  'opt.p-heel-erosion': 'Bal­hoorn­ontsteking (stinkpoot)',
+  'opt.p-toe-ulcer': 'Teenzweer',
+  'opt.p-double-sole': 'Dubbele zool',
+  'opt.p-thin-sole': 'Dunne zool',
+  'opt.p-other': 'Anders',
+  'opt.t-block': 'Klotje geplakt',
+  'opt.t-bandage': 'Verband',
+  'opt.t-spray': 'Spray',
+  'opt.t-vet': 'Doorverwezen naar dieren­arts',
+  'opt.t-other': 'Anders',
+};
+
+// Error messages thrown by the data layer (English) → translation.
+const errorsNl: Record<string, string> = {
+  'Enter a farm name': 'Vul een bedrijfsnaam in',
+  'A farm with this name already exists': 'Er bestaat al een bedrijf met deze naam',
+  'Enter a name': 'Vul een naam in',
+  'Already in the list': 'Staat al in de lijst',
+  'Name cannot be empty': 'Naam mag niet leeg zijn',
+  'Enter a cow number': 'Vul een koenummer in',
+  'You need at least one farm. Add another farm first.': 'U hebt minstens één bedrijf nodig. Voeg eerst een ander bedrijf toe.',
+  'This is not a HoofTrack backup file': 'Dit is geen HoofTrack-back-upbestand',
+};
+
+const DICTS: Record<Lang, Record<Key, string>> = { en, nl };
+const LOCALES: Record<Lang, string> = { en: 'en-GB', nl: 'nl-NL' };
+const DEFAULT_LABELS = new Map(defaultOptions().map((o) => [o.id, o.label]));
+
+export function translate(lang: Lang, key: Key, vars?: Record<string, string | number>): string {
+  let s = DICTS[lang][key] ?? en[key];
+  if (vars) for (const [k, v] of Object.entries(vars)) s = s.split(`{${k}}`).join(String(v));
+  return s;
+}
+
+// ---- language preference
+const KEY = 'hooftrack.lang';
+export function getLangPref(): Lang {
+  try {
+    const v = localStorage.getItem(KEY);
+    if (v === 'en' || v === 'nl') return v;
+  } catch { /* ignore */ }
+  return typeof navigator !== 'undefined' && navigator.language?.toLowerCase().startsWith('nl') ? 'nl' : 'en';
+}
+export function saveLangPref(lang: Lang) {
+  try { localStorage.setItem(KEY, lang); } catch { /* ignore */ }
+  document.documentElement.lang = lang;
+}
+
+export const LangContext = createContext<{ lang: Lang; setLang: (l: Lang) => void }>({ lang: 'en', setLang: () => {} });
+
+export function makeL(lang: Lang, setLang: (l: Lang) => void) {
+  const t = (key: Key, vars?: Record<string, string | number>) => translate(lang, key, vars);
+  return {
+    lang,
+    setLang,
+    t,
+    date: (iso: string) => formatDate(iso, LOCALES[lang]),
+    relDue: (due: string, today: string) => {
+      const d = diffDays(today, due);
+      if (d === 0) return t('date.today');
+      if (d === 1) return t('date.tomorrow');
+      if (d === -1) return t('date.overdue1');
+      return d < 0 ? t('date.overdueN', { n: -d }) : t('date.inN', { n: d });
+    },
+    /** Shows the translated default name, unless the user renamed the option. */
+    opt: (o: OptionItem | undefined, id: string) => {
+      if (!o) return id;
+      if (DEFAULT_LABELS.get(o.id) === o.label && (`opt.${o.id}` in en)) return t(`opt.${o.id}` as Key);
+      return o.label;
+    },
+    err: (e: unknown) => {
+      const msg = e instanceof Error ? e.message : String(e);
+      return lang === 'nl' ? (errorsNl[msg] ?? msg) : msg;
+    },
+  };
+}
+export type L = ReturnType<typeof makeL>;
+
+export function useL(): L {
+  const { lang, setLang } = useContext(LangContext);
+  return useMemo(() => makeL(lang, setLang), [lang, setLang]);
+}

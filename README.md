@@ -50,6 +50,15 @@ Both `dev` and `preview` print a **Network** address that ends in `/hooftrack/`,
 
 > Full offline mode needs **HTTPS** because browsers only run service workers on secure pages. Over a plain `http://192.168.x.x` address the app works and can be added to the home screen, but it won't open without the computer running. For real offline use, host the `dist/` folder on any HTTPS static host (Netlify, Vercel, Cloudflare Pages, GitHub Pages) and install it from there.
 
+## Features at a glance
+
+- **Controles / Due:** rechecks that are overdue, due this week or due next week.
+- **Bekappen / To trim:** the farm puts cows on a list (paste numbers, one per line). The trimmer ticks each one **✓ Trimmed** or **✗ Not possible**. Use **Share list** to send the numbers by WhatsApp; the other phone pastes them in.
+- **Trim record:** foot, claw, problem, severity, treatment and recheck in a few taps, with undo.
+- **Cow history:** every visit, plus a flag when the same problem was recorded twice on the same foot.
+- **Delete:** a visit, a cow or a farm, each with a confirmation and Undo.
+- **Language:** English or Nederlands (Settings → Language / Taal). Phones set to Dutch start in Dutch.
+
 ## How it is built
 
 - Vite, React, TypeScript, Tailwind CSS v4, vite-plugin-pwa

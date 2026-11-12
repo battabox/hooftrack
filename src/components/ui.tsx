@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 
-const base = 'min-h-14 rounded-xl border-2 px-3 py-2 text-lg font-semibold leading-tight transition-colors active:scale-[0.98]';
+// hyphens + overflow-wrap: long Dutch words (e.g. "Balhoornontsteking") wrap instead of spilling out of the button
+const base = 'min-h-14 rounded-xl border-2 px-3 py-2 text-lg font-semibold leading-tight hyphens-auto [overflow-wrap:anywhere] transition-colors active:scale-[0.98]';
 
 export function Choice(props: {
   selected: boolean;
