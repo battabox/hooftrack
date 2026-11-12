@@ -5,6 +5,7 @@ import { useTrimList } from '../data/hooks';
 import { useL } from '../lib/i18n';
 import { go } from '../lib/router';
 import { Button, DemoBadge, inputClass } from '../components/ui';
+import { NumberCapture } from '../components/NumberCapture';
 
 export function ToTrim() {
   const { farm, toast } = useApp();
@@ -68,6 +69,12 @@ export function ToTrim() {
         <section className="mt-4 rounded-2xl border-2 border-neutral-400 p-3 dark:border-neutral-600">
           <h2 className="text-lg font-extrabold">{l.t('list.addTitle')}</h2>
           <p className="text-neutral-700 dark:text-neutral-300">{l.t('list.addHelp')}</p>
+          <NumberCapture
+            onNumbers={(nums) => {
+              setMsg('');
+              setText((cur) => (cur.trim() ? `${cur.trimEnd()}\n` : '') + nums.join('\n'));
+            }}
+          />
           <textarea
             className={`${inputClass} mt-2 min-h-32 py-2 font-bold`}
             placeholder={'1234\n5678\nNL 1234 5678 9'}
